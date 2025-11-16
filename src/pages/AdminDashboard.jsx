@@ -33,6 +33,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  UploadFile as UploadFileIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -52,6 +53,7 @@ export default function AdminDashboard() {
   const [modalType, setModalType] = useState(""); // "student" | "announcement"
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [pdfFile, setPdfFile] = useState(null);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
@@ -61,7 +63,7 @@ export default function AdminDashboard() {
     navigate("/");
   };
 
-  // Fetch data functions
+  // Fetch data
   const fetchStudents = async () => {
     try {
       const res = await fetch("https://student-assist.onrender.com/auth/");
@@ -75,9 +77,9 @@ export default function AdminDashboard() {
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await fetch("https://student-assist.onrender.com/nts/");
+      const res = await fetch("https://student-assist.onrender.com/events/");
       const data = await res.json();
-      setAnnouncements(Array.isArray(data) ? data : [data]); // keep for backend
+      setAnnouncements(Array.isArray(data) ? data : [data]);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch announcements");
@@ -94,6 +96,7 @@ export default function AdminDashboard() {
     setModalType(type);
     setEditingItem(item);
     setFormData(item || {});
+    setPdfFile(null);
     setModalOpen(true);
   };
 
@@ -101,10 +104,43 @@ export default function AdminDashboard() {
     setModalOpen(false);
     setEditingItem(null);
     setFormData({});
+    setPdfFile(null);
   };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPdfFile(file);
+
+    try {
+      const formDataPdf = new FormData();
+      formDataPdf.append("file", file);
+
+      const res = await fetch("https://student-assist.onrender.com/extract-event", {
+        method: "POST",
+        body: formDataPdf,
+      });
+      const data = await res.json();
+
+      if (data.success && data.event) {
+        setFormData({
+          title: data.event.title,
+          description: data.event.description,
+          date: data.event.date,
+          time: data.event.time,
+          department: data.event.department,
+        });
+      } else {
+        alert("Failed to extract data from PDF");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("PDF extraction failed");
+    }
   };
 
   const handleSave = async () => {
@@ -118,8 +154,8 @@ export default function AdminDashboard() {
           : "https://student-assist.onrender.com/auth/";
       else if (modalType === "announcement")
         url = editingItem
-          ? `https://student-assist.onrender.com/nts/${editingItem.id}`
-          : "https://student-assist.onrender.com/nts/";
+          ? `https://student-assist.onrender.com/events/${editingItem.id}`
+          : "https://student-assist.onrender.com/events/";
 
       await fetch(url, {
         method,
@@ -142,7 +178,7 @@ export default function AdminDashboard() {
     try {
       let url = "";
       if (type === "students") url = `https://student-assist.onrender.com/auth/${id}`;
-      else if (type === "announcements") url = `https://student-assist.onrender.com/nts/${id}`;
+      else if (type === "announcements") url = `https://student-assist.onrender.com/events/${id}`;
 
       await fetch(url, { method: "DELETE" });
 
@@ -154,7 +190,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Table render
+  // Render table
   const renderTable = (title, data, columns, type) => {
     const rows = Array.isArray(data) ? data : [];
     return (
@@ -209,7 +245,6 @@ export default function AdminDashboard() {
     );
   };
 
-  // Modal fields
   const renderModalFields = () => {
     switch (modalType) {
       case "student":
@@ -239,6 +274,15 @@ export default function AdminDashboard() {
       case "announcement":
         return (
           <>
+            <Button
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              component="label"
+              sx={{ mb: 2 }}
+            >
+              Upload PDF
+              <input type="file" hidden accept=".pdf" onChange={handlePdfUpload} />
+            </Button>
             <TextField
               label="Title"
               name="title"
@@ -263,6 +307,12 @@ export default function AdminDashboard() {
               value={formData.time || ""}
               onChange={handleChange}
             />
+            <TextField
+              label="Department"
+              name="department"
+              value={formData.department || ""}
+              onChange={handleChange}
+            />
           </>
         );
       default:
@@ -270,19 +320,22 @@ export default function AdminDashboard() {
     }
   };
 
-  // Content
   const renderContent = () => {
     switch (selected) {
       case "students":
         return renderTable("Students", students, ["id", "email", "role"], "student");
       case "announcements":
-        return renderTable("Announcements", announcements, ["id", "title", "description", "date", "time"], "announcement");
+        return renderTable(
+          "Announcements",
+          announcements,
+          ["id", "title", "description", "date", "time", "department"],
+          "announcement"
+        );
       default:
         return null;
     }
   };
 
-  // Drawer
   const drawer = (
     <Box sx={{ textAlign: "center", bgcolor: "#1a237e", height: "100%" }}>
       <Typography variant="h6" sx={{ my: 2, color: "#FFD700", fontWeight: "bold" }}>
