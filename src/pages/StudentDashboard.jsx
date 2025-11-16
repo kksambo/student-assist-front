@@ -15,19 +15,17 @@ import {
   ListItemText,
   Divider,
   Button,
-  TextField,
   Grid,
   Paper,
   Card,
   CardContent,
+  TextField, // <-- Add this
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import BookIcon from "@mui/icons-material/Book";
-import SchoolIcon from "@mui/icons-material/School";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import MoodIcon from "@mui/icons-material/Mood";
 import ChatIcon from "@mui/icons-material/Chat";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import EventIcon from "@mui/icons-material/Event";
 import SendIcon from "@mui/icons-material/Send";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useNavigate } from "react-router-dom";
@@ -37,13 +35,7 @@ const drawerWidth = 240;
 export default function StudentDashboard({ setUser }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selected, setSelected] = useState("resources");
-
-  const [resourceSearch, setResourceSearch] = useState("");
-  const [resources, setResources] = useState([]);
-
-  const [moduleSearch, setModuleSearch] = useState("");
-  const [pdfs, setPdfs] = useState([]);
+  const [selected, setSelected] = useState("events");
 
   const [financialResources, setFinancialResources] = useState([]);
   const [financialSearch, setFinancialSearch] = useState("");
@@ -56,6 +48,8 @@ export default function StudentDashboard({ setUser }) {
   const [aiResponse, setAiResponse] = useState("");
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfSummary, setPdfSummary] = useState("");
+
+  const [events, setEvents] = useState([]);
 
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -72,33 +66,19 @@ export default function StudentDashboard({ setUser }) {
 
   useEffect(() => scrollToBottom(), [chatMessages]);
 
-  const fetchResources = async (search = "") => {
+  // Fetch events
+  const fetchEvents = async () => {
     try {
-      let url = "https://student-assist.onrender.com/resources/";
-      if (search) url += `?q=${encodeURIComponent(search)}`;
-      const res = await fetch(url);
+      const res = await fetch("https://student-assist.onrender.com/events/");
       const data = await res.json();
-      setResources(Array.isArray(data) ? data : []);
+      setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch resources");
+      alert("Failed to fetch events");
     }
   };
 
-  const fetchPdfs = async () => {
-    try {
-      let url =
-        "https://student-assist.onrender.com/student-resources/resources";
-      if (moduleSearch) url += `/module/${moduleSearch}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setPdfs(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch PDFs");
-    }
-  };
-
+  // Fetch financial resources
   const fetchFinancialAidResources = async (search = "") => {
     try {
       let url = "https://student-assist.onrender.com/financial-aid/";
@@ -113,30 +93,11 @@ export default function StudentDashboard({ setUser }) {
   };
 
   useEffect(() => {
-    fetchResources();
-    fetchPdfs();
+    fetchEvents();
     fetchFinancialAidResources();
   }, []);
 
-  const downloadPdf = async (id, title) => {
-    try {
-      const res = await fetch(
-        `https://student-assist.onrender.com/student-resources/resources/download/${id}`
-      );
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = title || "document.pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to download PDF");
-    }
-  };
-
+  // Chat bot message send
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
     const studentEmail = user?.email || "student@example.com";
@@ -160,6 +121,7 @@ export default function StudentDashboard({ setUser }) {
     }
   };
 
+  // Ask AI prompt
   const handleAiAsk = async () => {
     if (!aiPrompt.trim()) return;
     setAiResponse("Thinking...");
@@ -177,6 +139,7 @@ export default function StudentDashboard({ setUser }) {
     }
   };
 
+  // PDF upload + summarize
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -189,10 +152,7 @@ export default function StudentDashboard({ setUser }) {
     try {
       const res = await fetch(
         "https://student-assist.onrender.com/llama/summarize-pdf",
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
       const data = await res.json();
       setPdfSummary(data.summary || "No summary available.");
@@ -204,62 +164,39 @@ export default function StudentDashboard({ setUser }) {
 
   const sections = [
     {
-      key: "resources",
-      title: "Available Resources",
-      icon: <BookIcon />,
+      key: "events",
+      title: "Events",
+      icon: <EventIcon />,
       content: (
         <Box>
           <Typography variant="h5" mb={2} sx={{ color: "#1a237e" }}>
-            TUT Available Resources
+            Upcoming Events
           </Typography>
-          <Box display="flex" gap={2} mb={3}>
-            <TextField
-              label="Search by Name or Campus"
-              value={resourceSearch}
-              onChange={(e) => setResourceSearch(e.target.value)}
-              variant="outlined"
-              sx={{ flex: 1 }}
-            />
-            <Button
-              variant="contained"
-              sx={{ backgroundColor: "#b71c1c" }}
-              onClick={() => fetchResources(resourceSearch)}
-            >
-              Search
-            </Button>
-          </Box>
           <Grid container spacing={3}>
-            {resources.length > 0 ? (
-              resources.map((res) => (
-                <Grid item xs={12} sm={6} md={4} key={res.id}>
+            {events.length > 0 ? (
+              events.map((ev) => (
+                <Grid item xs={12} sm={6} md={4} key={ev.id}>
                   <Card sx={{ bgcolor: "#fbc02d", borderRadius: 3 }}>
                     <CardContent>
                       <Typography
                         variant="subtitle1"
                         sx={{ fontWeight: "bold", color: "#1a237e" }}
                       >
-                        {res.name}
+                        {ev.title}
                       </Typography>
                       <Typography variant="body2">
-                        Campus: {res.campus_name || "N/A"}
+                        Date: {ev.date || "N/A"}
                       </Typography>
-                      <Typography variant="body2">Info: {res.info}</Typography>
-                      {res.contact && (
-                        <Typography variant="body2">
-                          Contact: {res.contact}
-                        </Typography>
-                      )}
-                      {res.email && (
-                        <Typography variant="body2">
-                          Email: {res.email}
-                        </Typography>
+                      <Typography variant="body2">{ev.description}</Typography>
+                      {ev.time && (
+                        <Typography variant="body2">Time: {ev.time}</Typography>
                       )}
                     </CardContent>
                   </Card>
                 </Grid>
               ))
             ) : (
-              <Typography>No resources found</Typography>
+              <Typography>No events available</Typography>
             )}
           </Grid>
         </Box>
@@ -342,7 +279,6 @@ export default function StudentDashboard({ setUser }) {
             Ask the AI or upload a study PDF for automatic summarization.
           </Typography>
 
-          {/* Manual AI Chat */}
           <Box display="flex" flexDirection="column" gap={2} mb={3}>
             <TextField
               label="Ask the AI anything..."
@@ -374,7 +310,6 @@ export default function StudentDashboard({ setUser }) {
             )}
           </Paper>
 
-          {/* PDF Upload + Summary */}
           <Typography variant="h6" sx={{ color: "#1a237e", mb: 1 }}>
             Upload a PDF to Summarize
           </Typography>
