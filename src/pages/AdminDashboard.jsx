@@ -34,8 +34,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Storage as StorageIcon,
-  AttachMoney as AttachMoneyIcon,
+  Event as EventIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -49,21 +48,22 @@ export default function AdminDashboard() {
   // Data states
   const [users, setUsers] = useState([]);
   const [supportList, setSupportList] = useState([]);
-  const [resources, setResources] = useState([]);
+  const [events, setEvents] = useState([]);
   const [financialAid, setFinancialAid] = useState([]);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState(""); // "user" | "support" | "resource" | "financialAid"
+  const [modalType, setModalType] = useState(""); // "user" | "support" | "event" | "financialAid"
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [pdfFile, setPdfFile] = useState(null);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
-  // Proper Logout
+  // Logout
   const logout = () => {
-    localStorage.removeItem("user"); // clear user session
-    navigate("/"); // redirect to login/home
+    localStorage.removeItem("user");
+    navigate("/");
   };
 
   // Fetch data functions
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("https://student-assist.onrender.com/auth/");
       const data = await res.json();
-      setUsers(data || []);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch users");
@@ -84,21 +84,22 @@ export default function AdminDashboard() {
         "https://student-assist.onrender.com/admin/support"
       );
       const data = await res.json();
-      setSupportList(data || []);
+      setSupportList(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch support entries");
     }
   };
 
-  const fetchResources = async () => {
+  const fetchEvents = async () => {
     try {
-      const res = await fetch("https://student-assist.onrender.com/resources/");
+      const res = await fetch("https://student-assist.onrender.com/events/");
       const data = await res.json();
-      setResources(data || []);
+      // Wrap single object in array
+      setEvents(Array.isArray(data) ? data : [data]);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch resources");
+      alert("Failed to fetch events");
     }
   };
 
@@ -108,7 +109,7 @@ export default function AdminDashboard() {
         "https://student-assist.onrender.com/financial-aid/"
       );
       const data = await res.json();
-      setFinancialAid(data || []);
+      setFinancialAid(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch financial aid resources");
@@ -118,15 +119,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchUsers();
     fetchSupport();
-    fetchResources();
+    fetchEvents();
     fetchFinancialAid();
   }, []);
 
-  // Modal Handlers
+  // Modal handlers
   const openModal = (type, item = null) => {
     setModalType(type);
     setEditingItem(item);
     setFormData(item || {});
+    setPdfFile(null);
     setModalOpen(true);
   };
 
@@ -134,13 +136,45 @@ export default function AdminDashboard() {
     setModalOpen(false);
     setEditingItem(null);
     setFormData({});
+    setPdfFile(null);
   };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Save data (Add/Edit)
+  const handlePdfChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setPdfFile(e.target.files[0]);
+    }
+  };
+
+  const handlePdfUpload = async () => {
+    if (!pdfFile) return;
+    const formDataFile = new FormData();
+    formDataFile.append("file", pdfFile);
+
+    try {
+      const res = await fetch(
+        "https://student-assist.onrender.com/extract-event",
+        {
+          method: "POST",
+          body: formDataFile,
+        }
+      );
+      const data = await res.json();
+      if (data.success && data.event) {
+        setFormData(data.event); // populate form fields
+      } else {
+        alert("Failed to extract event data from PDF");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading PDF");
+    }
+  };
+
+  // Save data
   const handleSave = async () => {
     try {
       let url = "";
@@ -148,16 +182,16 @@ export default function AdminDashboard() {
 
       if (modalType === "user")
         url = editingItem
-          ? `https://student-assist.onrender.com//auth/${editingItem.id}`
+          ? `https://student-assist.onrender.com/auth/${editingItem.id}`
           : "https://student-assist.onrender.com/auth/";
       else if (modalType === "support")
         url = editingItem
           ? `https://student-assist.onrender.com/admin/support/${editingItem.id}`
           : "https://student-assist.onrender.com/admin/support";
-      else if (modalType === "resource")
+      else if (modalType === "event")
         url = editingItem
-          ? `https://student-assist.onrender.com/resources/${editingItem.id}`
-          : "https://student-assist.onrender.com/resources/";
+          ? `https://student-assist.onrender.com/events/${editingItem.id}`
+          : "https://student-assist.onrender.com/events/";
       else if (modalType === "financialAid")
         url = editingItem
           ? `https://student-assist.onrender.com/financial-aid/${editingItem.id}`
@@ -169,10 +203,10 @@ export default function AdminDashboard() {
         body: JSON.stringify(formData),
       });
 
-      // Refresh data
+      // Refresh
       if (modalType === "user") fetchUsers();
       else if (modalType === "support") fetchSupport();
-      else if (modalType === "resource") fetchResources();
+      else if (modalType === "event") fetchEvents();
       else if (modalType === "financialAid") fetchFinancialAid();
 
       closeModal();
@@ -191,8 +225,8 @@ export default function AdminDashboard() {
         url = `https://student-assist.onrender.com/auth/${id}`;
       else if (type === "support")
         url = `https://student-assist.onrender.com/admin/support/${id}`;
-      else if (type === "resources")
-        url = `https://student-assist.onrender.com/resources/${id}`;
+      else if (type === "events")
+        url = `https://student-assist.onrender.com/events/${id}`;
       else if (type === "financialAid")
         url = `https://student-assist.onrender.com/financial-aid/${id}`;
 
@@ -200,7 +234,7 @@ export default function AdminDashboard() {
 
       if (type === "users") fetchUsers();
       else if (type === "support") fetchSupport();
-      else if (type === "resources") fetchResources();
+      else if (type === "events") fetchEvents();
       else if (type === "financialAid") fetchFinancialAid();
     } catch (err) {
       console.error(err);
@@ -208,61 +242,64 @@ export default function AdminDashboard() {
     }
   };
 
-  // Render table helper
-  const renderTable = (title, data, columns, type) => (
-    <Box>
-      <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h5" color="#b71c1c">
-          {title}
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{ bgcolor: "#FFD700", color: "#1a237e" }}
-          onClick={() => openModal(type)}
-        >
-          Add
-        </Button>
-      </Box>
-      <Paper>
-        <Table>
-          <TableHead sx={{ bgcolor: "#1a237e" }}>
-            <TableRow>
-              {columns.map((col) => (
-                <TableCell key={col} sx={{ color: "#FFD700" }}>
-                  {col.toUpperCase()}
-                </TableCell>
-              ))}
-              <TableCell sx={{ color: "#FFD700" }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.map((item) => (
-              <TableRow key={item.id} hover>
+  // Table render
+  const renderTable = (title, data, columns, type) => {
+    const rows = Array.isArray(data) ? data : [];
+    return (
+      <Box>
+        <Box display="flex" justifyContent="space-between" mb={2}>
+          <Typography variant="h5" color="#b71c1c">
+            {title}
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ bgcolor: "#FFD700", color: "#1a237e" }}
+            onClick={() => openModal(type)}
+          >
+            Add
+          </Button>
+        </Box>
+        <Paper>
+          <Table>
+            <TableHead sx={{ bgcolor: "#1a237e" }}>
+              <TableRow>
                 {columns.map((col) => (
-                  <TableCell key={col}>{item[col] || "-"}</TableCell>
+                  <TableCell key={col} sx={{ color: "#FFD700" }}>
+                    {col.toUpperCase()}
+                  </TableCell>
                 ))}
-                <TableCell>
-                  <Button
-                    startIcon={<EditIcon />}
-                    onClick={() => openModal(type, item)}
-                    sx={{ mr: 1, color: "#1a237e" }}
-                  />
-                  <Button
-                    startIcon={<DeleteIcon />}
-                    sx={{ color: "#b71c1c" }}
-                    onClick={() => handleDelete(type, item.id)}
-                  />
-                </TableCell>
+                <TableCell sx={{ color: "#FFD700" }}>Actions</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
-    </Box>
-  );
+            </TableHead>
+            <TableBody>
+              {rows.map((item) => (
+                <TableRow key={item.id} hover>
+                  {columns.map((col) => (
+                    <TableCell key={col}>{item[col] || "-"}</TableCell>
+                  ))}
+                  <TableCell>
+                    <Button
+                      startIcon={<EditIcon />}
+                      onClick={() => openModal(type, item)}
+                      sx={{ mr: 1, color: "#1a237e" }}
+                    />
+                    <Button
+                      startIcon={<DeleteIcon />}
+                      sx={{ color: "#b71c1c" }}
+                      onClick={() => handleDelete(type, item.id)}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+      </Box>
+    );
+  };
 
-  // Render modal fields dynamically
+  // Modal fields
   const renderModalFields = () => {
     switch (modalType) {
       case "user":
@@ -306,37 +343,45 @@ export default function AdminDashboard() {
             />
           </>
         );
-      case "resource":
+      case "event":
         return (
           <>
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfChange}
+            />
+            <Button variant="outlined" onClick={handlePdfUpload}>
+              Extract from PDF
+            </Button>
             <TextField
-              label="Name"
-              name="name"
-              value={formData.name || ""}
+              label="Title"
+              name="title"
+              value={formData.title || ""}
               onChange={handleChange}
             />
             <TextField
-              label="Campus Name"
-              name="campus_name"
-              value={formData.campus_name || ""}
+              label="Description"
+              name="description"
+              value={formData.description || ""}
               onChange={handleChange}
             />
             <TextField
-              label="Info"
-              name="info"
-              value={formData.info || ""}
+              label="Date"
+              name="date"
+              value={formData.date || ""}
               onChange={handleChange}
             />
             <TextField
-              label="Contact"
-              name="contact"
-              value={formData.contact || ""}
+              label="Time"
+              name="time"
+              value={formData.time || ""}
               onChange={handleChange}
             />
             <TextField
-              label="Email"
-              name="email"
-              value={formData.email || ""}
+              label="Department"
+              name="department"
+              value={formData.department || ""}
               onChange={handleChange}
             />
           </>
@@ -375,7 +420,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Render main content
+  // Content
   const renderContent = () => {
     switch (selected) {
       case "dashboard":
@@ -385,7 +430,7 @@ export default function AdminDashboard() {
               Welcome, Admin!
             </Typography>
             <Typography color="#1a237e">
-              Use the sidebar to manage users, support entries, resources, and
+              Use the sidebar to manage users, support entries, events, and
               financial aid.
             </Typography>
           </Box>
@@ -399,12 +444,12 @@ export default function AdminDashboard() {
           ["id", "type", "info"],
           "support"
         );
-      case "resources":
+      case "events":
         return renderTable(
-          "Resources",
-          resources,
-          ["id", "name", "campus_name", "info", "contact", "email"],
-          "resource"
+          "Events",
+          events,
+          ["id", "title", "description", "date", "time", "department"],
+          "event"
         );
       case "financialAid":
         return renderTable(
@@ -418,7 +463,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Drawer component
+  // Drawer
   const drawer = (
     <Box sx={{ textAlign: "center", bgcolor: "#1a237e", height: "100%" }}>
       <Typography
@@ -433,12 +478,8 @@ export default function AdminDashboard() {
           { text: "Dashboard", key: "dashboard", icon: <DashboardIcon /> },
           { text: "Users", key: "users", icon: <GroupIcon /> },
           { text: "Support", key: "support", icon: <SupportIcon /> },
-          { text: "Resources", key: "resources", icon: <StorageIcon /> },
-          {
-            text: "Financial Aid",
-            key: "financialAid",
-            icon: <AttachMoneyIcon />,
-          },
+          { text: "Events", key: "events", icon: <EventIcon /> },
+          { text: "Financial Aid", key: "financialAid", icon: <EventIcon /> },
         ].map((item) => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton
@@ -498,7 +539,6 @@ export default function AdminDashboard() {
         </Toolbar>
       </AppBar>
 
-      {/* Drawer */}
       <Box
         component="nav"
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
@@ -527,7 +567,6 @@ export default function AdminDashboard() {
         </Drawer>
       </Box>
 
-      {/* Main Content */}
       <Box
         component="main"
         sx={{
@@ -539,7 +578,6 @@ export default function AdminDashboard() {
         <Toolbar />
         {renderContent()}
 
-        {/* Modal */}
         <Modal
           open={modalOpen}
           onClose={closeModal}
@@ -570,8 +608,8 @@ export default function AdminDashboard() {
                   ? "User"
                   : modalType === "support"
                   ? "Support"
-                  : modalType === "resource"
-                  ? "Resource"
+                  : modalType === "event"
+                  ? "Event"
                   : "Financial Aid"}
               </Typography>
               {renderModalFields()}
