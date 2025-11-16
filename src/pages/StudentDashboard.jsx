@@ -19,10 +19,9 @@ import {
   Paper,
   Card,
   CardContent,
-  TextField, // <-- Add this
+  TextField,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import ChatIcon from "@mui/icons-material/Chat";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import EventIcon from "@mui/icons-material/Event";
@@ -36,9 +35,6 @@ export default function StudentDashboard({ setUser }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selected, setSelected] = useState("events");
-
-  const [financialResources, setFinancialResources] = useState([]);
-  const [financialSearch, setFinancialSearch] = useState("");
 
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -78,23 +74,8 @@ export default function StudentDashboard({ setUser }) {
     }
   };
 
-  // Fetch financial resources
-  const fetchFinancialAidResources = async (search = "") => {
-    try {
-      let url = "https://student-assist.onrender.com/financial-aid/";
-      if (search) url += `?q=${encodeURIComponent(search)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setFinancialResources(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch financial aid resources");
-    }
-  };
-
   useEffect(() => {
     fetchEvents();
-    fetchFinancialAidResources();
   }, []);
 
   // Chat bot message send
@@ -165,12 +146,12 @@ export default function StudentDashboard({ setUser }) {
   const sections = [
     {
       key: "events",
-      title: "Events",
+      title: "Announcements",
       icon: <EventIcon />,
       content: (
         <Box>
           <Typography variant="h5" mb={2} sx={{ color: "#1a237e" }}>
-            Upcoming Events
+            Upcoming Announcements
           </Typography>
           <Grid container spacing={3}>
             {events.length > 0 ? (
@@ -184,10 +165,10 @@ export default function StudentDashboard({ setUser }) {
                       >
                         {ev.title}
                       </Typography>
-                      <Typography variant="body2">
-                        Date: {ev.date || "N/A"}
-                      </Typography>
                       <Typography variant="body2">{ev.description}</Typography>
+                      {ev.date && (
+                        <Typography variant="body2">Date: {ev.date}</Typography>
+                      )}
                       {ev.time && (
                         <Typography variant="body2">Time: {ev.time}</Typography>
                       )}
@@ -196,71 +177,7 @@ export default function StudentDashboard({ setUser }) {
                 </Grid>
               ))
             ) : (
-              <Typography>No events available</Typography>
-            )}
-          </Grid>
-        </Box>
-      ),
-    },
-    {
-      key: "finance",
-      title: "Financial Assistance",
-      icon: <AttachMoneyIcon />,
-      content: (
-        <Box>
-          <Typography variant="h5" mb={3} sx={{ color: "#1a237e" }}>
-            Financial Assistance & Support
-          </Typography>
-          <Box display="flex" gap={2} mb={3}>
-            <TextField
-              label="Search Financial Resources"
-              value={financialSearch}
-              onChange={(e) => setFinancialSearch(e.target.value)}
-              variant="outlined"
-              sx={{ flex: 1 }}
-            />
-            <Button
-              variant="contained"
-              sx={{ backgroundColor: "#b71c1c" }}
-              onClick={() => fetchFinancialAidResources(financialSearch)}
-            >
-              Search
-            </Button>
-          </Box>
-          <Grid container spacing={3}>
-            {financialResources.length > 0 ? (
-              financialResources.map((res) => (
-                <Grid item xs={12} sm={6} md={4} key={res.id}>
-                  <Card sx={{ bgcolor: "#fbc02d", borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: "bold", color: "#1a237e" }}
-                      >
-                        {res.name}
-                      </Typography>
-                      <Typography variant="body2">{res.description}</Typography>
-                      {res.requirements && (
-                        <Typography variant="body2">
-                          Requirements: {res.requirements}
-                        </Typography>
-                      )}
-                      {res.link && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 1 }}
-                          onClick={() => window.open(res.link, "_blank")}
-                        >
-                          View More
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))
-            ) : (
-              <Typography>No financial resources found</Typography>
+              <Typography>No announcements available</Typography>
             )}
           </Grid>
         </Box>
