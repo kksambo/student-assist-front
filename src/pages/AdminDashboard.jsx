@@ -34,7 +34,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Event as EventIcon,
+  nt as ntIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -48,12 +48,12 @@ export default function AdminDashboard() {
   // Data states
   const [users, setUsers] = useState([]);
   const [supportList, setSupportList] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [nts, setnts] = useState([]);
   const [financialAid, setFinancialAid] = useState([]);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState(""); // "user" | "support" | "event" | "financialAid"
+  const [modalType, setModalType] = useState(""); // "user" | "support" | "nt" | "financialAid"
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [pdfFile, setPdfFile] = useState(null);
@@ -91,15 +91,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchEvents = async () => {
+  const fetchnts = async () => {
     try {
-      const res = await fetch("https://student-assist.onrender.com/events/");
+      const res = await fetch("https://student-assist.onrender.com/nts/");
       const data = await res.json();
       // Wrap single object in array
-      setEvents(Array.isArray(data) ? data : [data]);
+      setnts(Array.isArray(data) ? data : [data]);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch events");
+      alert("Failed to fetch nts");
     }
   };
 
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchUsers();
     fetchSupport();
-    fetchEvents();
+    fetchnts();
     fetchFinancialAid();
   }, []);
 
@@ -156,17 +156,17 @@ export default function AdminDashboard() {
 
     try {
       const res = await fetch(
-        "https://student-assist.onrender.com/extract-event",
+        "https://student-assist.onrender.com/extract-nt",
         {
           method: "POST",
           body: formDataFile,
         }
       );
       const data = await res.json();
-      if (data.success && data.event) {
-        setFormData(data.event); // populate form fields
+      if (data.success && data.nt) {
+        setFormData(data.nt); // populate form fields
       } else {
-        alert("Failed to extract event data from PDF");
+        alert("Failed to extract nt data from PDF");
       }
     } catch (err) {
       console.error(err);
@@ -188,10 +188,10 @@ export default function AdminDashboard() {
         url = editingItem
           ? `https://student-assist.onrender.com/admin/support/${editingItem.id}`
           : "https://student-assist.onrender.com/admin/support";
-      else if (modalType === "event")
+      else if (modalType === "nt")
         url = editingItem
-          ? `https://student-assist.onrender.com/events/${editingItem.id}`
-          : "https://student-assist.onrender.com/events/";
+          ? `https://student-assist.onrender.com/nts/${editingItem.id}`
+          : "https://student-assist.onrender.com/nts/";
       else if (modalType === "financialAid")
         url = editingItem
           ? `https://student-assist.onrender.com/financial-aid/${editingItem.id}`
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
       // Refresh
       if (modalType === "user") fetchUsers();
       else if (modalType === "support") fetchSupport();
-      else if (modalType === "event") fetchEvents();
+      else if (modalType === "nt") fetchnts();
       else if (modalType === "financialAid") fetchFinancialAid();
 
       closeModal();
@@ -225,8 +225,8 @@ export default function AdminDashboard() {
         url = `https://student-assist.onrender.com/auth/${id}`;
       else if (type === "support")
         url = `https://student-assist.onrender.com/admin/support/${id}`;
-      else if (type === "events")
-        url = `https://student-assist.onrender.com/events/${id}`;
+      else if (type === "nts")
+        url = `https://student-assist.onrender.com/nts/${id}`;
       else if (type === "financialAid")
         url = `https://student-assist.onrender.com/financial-aid/${id}`;
 
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
 
       if (type === "users") fetchUsers();
       else if (type === "support") fetchSupport();
-      else if (type === "events") fetchEvents();
+      else if (type === "nts") fetchnts();
       else if (type === "financialAid") fetchFinancialAid();
     } catch (err) {
       console.error(err);
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
             />
           </>
         );
-      case "event":
+      case "nt":
         return (
           <>
             <input
@@ -430,7 +430,7 @@ export default function AdminDashboard() {
               Welcome, Admin!
             </Typography>
             <Typography color="#1a237e">
-              Use the sidebar to manage users, support entries, events, and
+              Use the sidebar to manage users, support entries, nts, and
               financial aid.
             </Typography>
           </Box>
@@ -444,12 +444,12 @@ export default function AdminDashboard() {
           ["id", "type", "info"],
           "support"
         );
-      case "events":
+      case "nts":
         return renderTable(
-          "Events",
-          events,
+          "nts",
+          nts,
           ["id", "title", "description", "date", "time", "department"],
-          "event"
+          "nt"
         );
       case "financialAid":
         return renderTable(
@@ -478,7 +478,7 @@ export default function AdminDashboard() {
           { text: "Dashboard", key: "dashboard", icon: <DashboardIcon /> },
           { text: "Users", key: "users", icon: <GroupIcon /> },
           { text: "Support", key: "support", icon: <SupportIcon /> },
-          { text: "Events", key: "events", icon: <EventIcon /> },
+          { text: "Announcements", key: "events", icon: <EventIcon /> },
           { text: "Financial Aid", key: "financialAid", icon: <EventIcon /> },
         ].map((item) => (
           <ListItem key={item.key} disablePadding>
