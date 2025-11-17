@@ -159,7 +159,7 @@ export default function Register() {
               onChange={(e) => setRole(e.target.value)}
             >
               <MenuItem value="student">Student</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
+              
             </TextField>
 
             <Button
